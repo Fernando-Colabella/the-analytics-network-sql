@@ -72,7 +72,10 @@ LEFT JOIN stg.store_master as sm ON ols.store = sm.store_id WHERE country = 'Arg
 SELECT product, SUM(total_ventas - descuentos) as ventas_netas, (SUM(descuentos) * 100 / sum(total_ventas)) as porcentaje_de_descuentos FROM ventas_Argentina GROUP BY product ORDER BY product
 
 -- 10. Las tablas "market_count" y "super_store_count" representan dos sistemas distintos que usa la empresa para contar la cantidad de gente que ingresa a tienda, uno para las tiendas de Latinoamerica y otro para Europa. Obtener en una unica tabla, las entradas a tienda de ambos sistemas.
-FECHAS FUERA DE RANGO, SINO -> SELECT * FROM stg.market_count UNION SELECT * FROM stg.super_store_count
+ALTER TABLE stg.market_count ALTER COLUMN date TYPE date USING to_date(date::text, 'YYYYMMDD');
+ALTER TABLE stg.super_store_count ALTER COLUMN date TYPE date USING to_date(date::text, 'YYYY-MM-DD');
+
+SELECT * FROM stg.market_count UNION SELECT * FROM stg.super_store_count ORDER BY store_id, date
 
 -- 11. Cuales son los productos disponibles para la venta (activos) de la marca Phillips?
 SELECT name, is_active FROM stg.product_master WHERE is_active = true AND name LIKE '%PHILIPS%' --Solo me trae un valor cuando deberían ser 2. No sé por qué
