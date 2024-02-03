@@ -2,60 +2,89 @@
 
 
 -- 1. Mostrar todos los productos dentro de la categoria electro junto con todos los detalles.
-select * from stg.product_master where categoria = 'Electro'
+select * from stg.product_master where category = 'Electro'
 
--- 2. Cuales son los producto producidos en China?
+-- 2. Cuales son los productos producidos en China?
+select name from stg.product_master where origin = 'China' --son 14 productos
 
 -- 3. Mostrar todos los productos de Electro ordenados por nombre.
+select name from stg.product_master where category = 'Electro' ORDER BY name
 
 -- 4. Cuales son las TV que se encuentran activas para la venta?
+select name from stg.product_master where subcategory = 'TV' AND is_active = true --Solo hay uno: TV Samsung 42
 
 -- 5. Mostrar todas las tiendas de Argentina ordenadas por fecha de apertura de las mas antigua a la mas nueva.
+select * from stg.store_master WHERE country ='Argentina' ORDER BY start_date --store_id: 2, 3, 1, 5
 
 -- 6. Cuales fueron las ultimas 5 ordenes de ventas?
+select order_number, date from stg.order_line_sale ORDER BY date DESC LIMIT 5
 
--- 7. Mostrar los primeros 10 registros de el conteo de trafico por Super store ordenados por fecha.
+-- 7. Mostrar los primeros 10 registros del conteo de trafico por Super store ordenados por fecha.
+select * from stg.super_store_count ORDER BY date LIMIT 10
 
--- 8. Cuales son los producto de electro que no son Soporte de TV ni control remoto.
+-- 8. Cuales son los productos de electro que no son Soporte de TV ni control remoto.
+select name, subcategory, subsubcategory from stg.product_master WHERE category='Electro' AND NOT(subsubcategory='Soporte' OR subsubcategory='Control remoto')
 
 -- 9. Mostrar todas las lineas de venta donde el monto sea mayor a $100.000 solo para transacciones en pesos.
+select * from  stg.order_line_sale WHERE sale > 100000 AND currency='ARS'
 
 -- 10. Mostrar todas las lineas de ventas de Octubre 2022.
+SELECT * FROM stg.order_line_sale WHERE date BETWEEN '2022-10-01' AND '2022-10-31'
 
 -- 11. Mostrar todos los productos que tengan EAN.
+SELECT * FROM stg.product_master WHERE ean IS NOT NULL --Sólo hay 9 registros
 
 -- 12. Mostrar todas las lineas de venta que que hayan sido vendidas entre 1 de Octubre de 2022 y 10 de Noviembre de 2022.
+SELECT * FROM stg.order_line_sale WHERE date BETWEEN '2022-10-01' AND '2022-11-10'
 
 
 -- ## Semana 1 - Parte B
 
 -- 1. Cuales son los paises donde la empresa tiene tiendas?
+SELECT DISTINCT country FROM stg.store_master --Uruguay, España, Argentina
 
 -- 2. Cuantos productos por subcategoria tiene disponible para la venta?
+SELECT COUNT(product_code) AS Cantidad, subcategory FROM stg.product_master GROUP BY subcategory
 
 -- 3. Cuales son las ordenes de venta de Argentina de mayor a $100.000?
+SELECT order_number, sale FROM stg.order_line_sale as ols LEFT JOIN stg.store_master as sm ON ols.store = sm.store_id WHERE country = 'Argentina' AND sale > 100000
 
 -- 4. Obtener los decuentos otorgados durante Noviembre de 2022 en cada una de las monedas?
+SELECT SUM(promotion) Descuentos, currency AS Moneda FROM stg.order_line_sale WHERE date BETWEEN '2022-11-01' AND '2022-11-30' GROUP BY currency
 
 -- 5. Obtener los impuestos pagados en Europa durante el 2022.
+SELECT SUM(tax) Impuestos FROM stg.order_line_sale AS ols LEFT JOIN stg.store_master AS sm ON ols.store = sm.store_id 
+WHERE date BETWEEN '2022-01-01' AND '2022-12-31' AND country = 'Spain'
 
 -- 6. En cuantas ordenes se utilizaron creditos?
+SELECT COUNT (credit) FROM stg.order_line_sale WHERE credit IS NOT NULL --8589 órdenes
 
 -- 7. Cual es el % de descuentos otorgados (sobre las ventas) por tienda?
+WITH porcentaje_de_ventas as( SELECT store, SUM(sale) total_ventas, SUM(promotion) descuentos FROM stg.order_line_sale GROUP BY store )
+SELECT (descuentos * 100 / total_ventas) porcentaje_de_descuentos FROM porcentaje_de_ventas ORDER BY store
 
 -- 8. Cual es el inventario promedio por dia que tiene cada tienda?
+SELECT store_id, date, SUM(initial) - SUM(final) as inventario_promedio FROM stg.inventory GROUP BY store_id, date ORDER BY date, store_id
 
 -- 9. Obtener las ventas netas y el porcentaje de descuento otorgado por producto en Argentina.
+WITH ventas_Argentina as( SELECT product, store, SUM(sale) total_ventas, SUM(promotion) descuentos FROM stg.order_line_sale as ols
+LEFT JOIN stg.store_master as sm ON ols.store = sm.store_id WHERE country = 'Argentina' GROUP BY product, store )
+SELECT product, SUM(total_ventas - descuentos) as ventas_netas, (SUM(descuentos) * 100 / sum(total_ventas)) as porcentaje_de_descuentos FROM ventas_Argentina GROUP BY product ORDER BY product
 
 -- 10. Las tablas "market_count" y "super_store_count" representan dos sistemas distintos que usa la empresa para contar la cantidad de gente que ingresa a tienda, uno para las tiendas de Latinoamerica y otro para Europa. Obtener en una unica tabla, las entradas a tienda de ambos sistemas.
+FECHAS FUERA DE RANGO, SINO -> SELECT * FROM stg.market_count UNION SELECT * FROM stg.super_store_count
 
 -- 11. Cuales son los productos disponibles para la venta (activos) de la marca Phillips?
+SELECT name, is_active FROM stg.product_master WHERE is_active = true AND name LIKE '%PHILIPS%' --Solo me trae un valor cuando deberían ser 2. No sé por qué
 
 -- 12. Obtener el monto vendido por tienda y moneda y ordenarlo de mayor a menor por valor nominal de las ventas (sin importar la moneda).
+SELECT store, SUM(sale) AS monto_vendido, currency FROM stg.order_line_sale GROUP BY store, currency ORDER BY store, monto_vendido
 
 -- 13. Cual es el precio promedio de venta de cada producto en las distintas monedas? Recorda que los valores de venta, impuesto, descuentos y creditos es por el total de la linea.
+SELECT product, AVG(sale/quantity), currency FROM stg.order_line_sale GROUP BY product, currency ORDER BY product
 
 -- 14. Cual es la tasa de impuestos que se pago por cada orden de venta?
+SELECT order_number, SUM(tax) FROM stg.order_line_sale GROUP BY order_number
 
 
 -- ## Semana 2 - Parte A
